@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Button,
   Table,
@@ -25,7 +25,6 @@ import {
   billStatusMap,
   billTypeMap
 } from '@fastgpt/global/support/wallet/bill/constants';
-// import { usePagination } from '@/web/common/hooks/usePagination';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
@@ -33,10 +32,9 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useI18n } from '@/web/context/I18n';
+
 const BillTable = () => {
   const { t } = useTranslation();
-  const { commonT } = useI18n();
   const { toast } = useToast();
   const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billDetail, setBillDetail] = useState<BillSchemaType>();
@@ -181,7 +179,7 @@ export default BillTable;
 
 function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () => void }) {
   const { t } = useTranslation();
-  const { commonT } = useI18n();
+
   return (
     <MyModal
       isOpen={true}
