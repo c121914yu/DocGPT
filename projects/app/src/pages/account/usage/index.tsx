@@ -65,7 +65,7 @@ const UsageTable = () => {
     () =>
       members.map((item) => ({
         label: (
-          <Flex alignItems={'center'}>
+          <Flex alignItems={'center'} color={'myGray.500'}>
             <Avatar src={item.avatar} w={'20px'} mr={1} rounded={'full'} />
             {item.memberName}
           </Flex>
@@ -167,6 +167,7 @@ const UsageTable = () => {
             {!isDetail && (
               <MySelect
                 bg={'myGray.50'}
+                minH={'32px'}
                 height={'32px'}
                 fontSize={'mini'}
                 ml={1}
@@ -216,6 +217,7 @@ const UsageTable = () => {
                   }}
                   itemWrap={false}
                   height={'32px'}
+                  bg={'myGray.50'}
                   w={'160px'}
                 />
               </Box>
@@ -232,6 +234,7 @@ const UsageTable = () => {
                 onSelect={(val) => setUsageSources(val as UsageSourceEnum[])}
                 itemWrap={false}
                 height={'32px'}
+                bg={'myGray.50'}
                 w={'160px'}
               />
             </Box>
