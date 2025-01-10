@@ -66,8 +66,6 @@ import type {
   listExistIdQuery,
   listExistIdResponse
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
-import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>

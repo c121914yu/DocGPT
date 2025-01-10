@@ -5,6 +5,7 @@ export type APIFileItem = {
   type: 'file' | 'folder';
   updateTime: Date;
   createTime: Date;
+  canEnter?: boolean;
 };
 
 export type APIFileServer = {
@@ -12,7 +13,10 @@ export type APIFileServer = {
   authorization: string;
 };
 
-export type APIFileListResponse = APIFileItem[];
+export type APIFileListResponse = {
+  files: APIFileItem[];
+  nextPageToken: string;
+};
 
 export type APIFileContentResponse = {
   content?: string;
