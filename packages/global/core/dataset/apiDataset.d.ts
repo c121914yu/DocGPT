@@ -13,7 +13,11 @@ export type APIFileServer = {
   authorization: string;
 };
 
-export type APIFileListResponse = APIFileItem[];
+export type APIFileListResponse = {
+  list: APIFileItem[];
+  total: number;
+  metaData?: Record<string, any>;
+};
 
 export type APIFileContentResponse = {
   content?: string;

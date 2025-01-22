@@ -79,33 +79,51 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
 
   const listFiles = async ({
     searchKey,
-    parentId
+    parentId,
+    offset,
+    pageSize
   }: {
     searchKey?: string;
     parentId?: ParentIdType;
+    offset: number;
+    pageSize: number;
   }) => {
-    const files = await request<APIFileListResponse>(
+    const response = await request<APIFileListResponse>(
       `/v1/file/list`,
       {
         searchKey,
-        parentId
+        parentId,
+        pageSize,
+        offset
       },
       'POST'
     );
 
-    if (!Array.isArray(files)) {
-      return Promise.reject('Invalid file list format');
+    let list: any[] = [];
+    let total = 0;
+
+    // 兼容旧的数据格式
+    if (Array.isArray(response)) {
+      list = response;
+      total = response.length;
+    } else {
+      list = response.list;
+      total = response.total;
     }
-    if (files.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
+
+    if (list.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
       return Promise.reject('Invalid file data format');
     }
 
-    const formattedFiles = files.map((file) => ({
+    const formattedFiles = list.map((file) => ({
       ...file,
       hasChild: file.type === 'folder'
     }));
 
-    return formattedFiles;
+    return {
+      list: formattedFiles,
+      total
+    };
   };
 
   const getFileContent = async ({ teamId, apiFileId }: { teamId: string; apiFileId: string }) => {

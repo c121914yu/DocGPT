@@ -13,9 +13,11 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import { APIFileItem, APIFileListResponse } from '@fastgpt/global/core/dataset/apiDataset';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -53,20 +55,20 @@ const CustomAPIFileInput = () => {
 
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: fileList = [], loading } = useRequest2(
-    async () => {
-      return getApiDatasetFileList({
-        datasetId: datasetDetail._id,
-        parentId: parent?.parentId,
-        searchKey: searchKey
-      });
+  const {
+    data: apiFileList,
+    ScrollData,
+    isLoading
+  } = useScrollPagination<GetApiDatasetFileListProps, APIFileListResponse>(getApiDatasetFileList, {
+    pageSize: 15,
+    params: {
+      datasetId: datasetDetail._id,
+      parentId: parent?.parentId,
+      searchKey: searchKey
     },
-    {
-      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey],
-      throttleWait: 500,
-      manual: false
-    }
-  );
+
+    refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey]
+  });
 
   const { data: existIdList = [] } = useRequest2(
     () => getApiDatasetFileListExistId({ datasetId: datasetDetail._id }),
@@ -83,17 +85,21 @@ const CustomAPIFileInput = () => {
   const { runAsync: onclickNext, loading: onNextLoading } = useRequest2(
     async () => {
       // Computed all selected files
-      const getFilesRecursively = async (files: APIFileItem[]): Promise<APIFileItem[]> => {
+      const getFilesRecursively = async (
+        files: APIFileItem[],
+        offset: number
+      ): Promise<APIFileItem[]> => {
         const allFiles: APIFileItem[] = [];
 
         for (const file of files) {
           if (file.type === 'folder') {
-            const folderFiles = await getApiDatasetFileList({
+            const { list: folderFiles, total } = await getApiDatasetFileList({
               datasetId: datasetDetail._id,
-              parentId: file?.id
+              parentId: file?.id,
+              offset,
+              pageSize: 100
             });
-
-            const subFiles = await getFilesRecursively(folderFiles);
+            const subFiles = await getFilesRecursively(folderFiles, total);
             allFiles.push(...subFiles);
           } else {
             allFiles.push(file);
@@ -103,7 +109,7 @@ const CustomAPIFileInput = () => {
         return allFiles;
       };
 
-      const allFiles = await getFilesRecursively(selectFiles);
+      const allFiles = await getFilesRecursively(selectFiles, 0);
 
       setSources(
         allFiles
@@ -145,139 +151,143 @@ const CustomAPIFileInput = () => {
     [selectFiles]
   );
 
-  const handleSelectAll = useCallback(() => {
-    const isAllSelected = fileList.length === selectFiles.length;
+  const isAllSelected = useMemo(() => {
+    const validSelectFiles = selectFiles.filter((file) =>
+      apiFileList.some((apiFile) => apiFile.id === file.id)
+    );
+    const notExistFiles = apiFileList.filter((file) => !existIdList.some((id) => id === file.id));
 
+    return notExistFiles.length === validSelectFiles.length;
+  }, [apiFileList, existIdList, selectFiles]);
+
+  const handleSelectAll = useCallback(() => {
     if (isAllSelected) {
       setSelectFiles([]);
     } else {
-      setSelectFiles(fileList);
+      setSelectFiles(apiFileList.filter((item) => !existIdList.includes(item.id)));
     }
-  }, [fileList, selectFiles]);
+  }, [apiFileList, existIdList, isAllSelected]);
 
   return (
-    <MyBox isLoading={loading} position="relative" h="full">
-      <Flex flexDirection={'column'} h="full">
-        <Flex justifyContent={'space-between'}>
-          <FolderPath
-            paths={paths}
-            onClick={(parentId) => {
-              const index = paths.findIndex((item) => item.parentId === parentId);
+    <MyBox
+      isLoading={isLoading}
+      position="relative"
+      h="full"
+      display={'flex'}
+      flexDirection={'column'}
+    >
+      <Flex justifyContent={'space-between'} mb={4}>
+        <FolderPath
+          paths={paths}
+          onClick={(parentId) => {
+            const index = paths.findIndex((item) => item.parentId === parentId);
 
-              setParent(paths[index]);
-              setPaths(paths.slice(0, index + 1));
-            }}
+            setParent(paths[index]);
+            setPaths(paths.slice(0, index + 1));
+          }}
+        />
+        {datasetDetail.apiServer && (
+          <Box w={'240px'}>
+            <SearchInput
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+              placeholder={t('common:core.workflow.template.Search')}
+            />
+          </Box>
+        )}
+      </Flex>
+
+      <Box flex={1} overflow={'hidden'} display={'flex'} flexDirection={'column'}>
+        <Flex
+          alignItems={'center'}
+          py={3}
+          cursor={'pointer'}
+          bg={'myGray.50'}
+          pl={7}
+          rounded={'8px'}
+          fontSize={'sm'}
+          fontWeight={'medium'}
+          color={'myGray.900'}
+          onClick={(e) => {
+            if (!(e.target as HTMLElement).closest('.checkbox')) {
+              handleSelectAll();
+            }
+          }}
+        >
+          <Checkbox
+            className="checkbox"
+            mr={2}
+            isChecked={isAllSelected}
+            onChange={handleSelectAll}
           />
-          {datasetDetail.apiServer && (
-            <Box w={'240px'}>
-              <SearchInput
-                value={searchKey}
-                onChange={(e) => setSearchKey(e.target.value)}
-                placeholder={t('common:core.workflow.template.Search')}
-              />
-            </Box>
-          )}
+          {t('common:Select_all')}
         </Flex>
-        <Box flex={1} overflowY="auto" mb={16}>
-          <Box ml={2} mt={3}>
-            <Flex
-              alignItems={'center'}
-              py={3}
-              cursor={'pointer'}
-              bg={'myGray.50'}
-              pl={7}
-              rounded={'8px'}
-              fontSize={'sm'}
-              fontWeight={'medium'}
-              color={'myGray.900'}
-              onClick={(e) => {
-                if (!(e.target as HTMLElement).closest('.checkbox')) {
-                  handleSelectAll();
-                }
-              }}
-            >
-              <Checkbox
-                className="checkbox"
-                mr={2}
-                isChecked={fileList.length === selectFiles.length}
-                onChange={handleSelectAll}
-              />
-              {t('common:Select_all')}
-            </Flex>
-            {fileList.map((item) => {
-              const isFolder = item.type === 'folder';
-              const isExists = existIdList.includes(item.id);
-              const isChecked = isExists || selectFiles.some((file) => file.id === item.id);
+        <ScrollData flex={1} overflowY="auto">
+          {apiFileList.map((item) => {
+            const isFolder = item.type === 'folder';
+            const isExists = existIdList.includes(item.id);
+            const isChecked = isExists || selectFiles.some((file) => file.id === item.id);
 
-              return (
-                <Flex
-                  key={item.id}
-                  py={3}
-                  _hover={{ bg: 'primary.50' }}
-                  pl={7}
-                  cursor={'pointer'}
-                  onClick={(e) => {
+            return (
+              <Flex
+                key={item.id}
+                py={3}
+                _hover={{ bg: 'primary.50' }}
+                pl={7}
+                cursor={'pointer'}
+                onClick={(e) => {
+                  if (isExists) return;
+                  if (!(e.target as HTMLElement).closest('.checkbox')) {
+                    handleItemClick(item);
+                  }
+                }}
+              >
+                <Checkbox
+                  className="checkbox"
+                  mr={2.5}
+                  isChecked={isChecked}
+                  isDisabled={isExists}
+                  onChange={(e) => {
+                    e.stopPropagation();
                     if (isExists) return;
-                    if (!(e.target as HTMLElement).closest('.checkbox')) {
-                      handleItemClick(item);
+                    if (isChecked) {
+                      setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                    } else {
+                      setSelectFiles((state) => [...state, item]);
                     }
                   }}
-                >
-                  <Checkbox
-                    className="checkbox"
-                    mr={2.5}
-                    isChecked={isChecked}
-                    isDisabled={isExists}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      if (isExists) return;
-                      if (isChecked) {
-                        setSelectFiles((state) => state.filter((file) => file.id !== item.id));
-                      } else {
-                        setSelectFiles((state) => [...state, item]);
-                      }
-                    }}
-                  />
-                  <MyIcon
-                    name={
-                      !isFolder
-                        ? (getSourceNameIcon({ sourceName: item.name }) as any)
-                        : 'common/folderFill'
-                    }
-                    w={'18px'}
-                    mr={1.5}
-                  />
-                  <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                    {item.name}
-                  </Box>
-                  {item.hasChild && <MyIcon name="core/chat/chevronRight" w={'18px'} ml={2} />}
-                </Flex>
-              );
-            })}
-          </Box>
-        </Box>
+                />
+                <MyIcon
+                  name={
+                    !isFolder
+                      ? (getSourceNameIcon({ sourceName: item.name }) as any)
+                      : 'common/folderFill'
+                  }
+                  w={'18px'}
+                  mr={1.5}
+                />
+                <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+                  {item.name}
+                </Box>
+                {item.hasChild && <MyIcon name="core/chat/chevronRight" w={'18px'} ml={2} />}
+              </Flex>
+            );
+          })}
+        </ScrollData>
+      </Box>
 
-        <Box
-          position="absolute"
-          display={'flex'}
-          justifyContent={'end'}
-          bottom={0}
-          left={0}
-          right={0}
-          p={4}
+      <Box display={'flex'} justifyContent={'end'} p={4}>
+        <Button
+          isDisabled={selectFiles.length === 0}
+          isLoading={onNextLoading}
+          onClick={onclickNext}
         >
-          <Button
-            isDisabled={selectFiles.length === 0}
-            isLoading={onNextLoading}
-            onClick={onclickNext}
-          >
-            {selectFiles.length > 0
-              ? `${t('common:core.dataset.import.Total files', { total: selectFiles.length })} | `
-              : ''}
-            {t('common:common.Next Step')}
-          </Button>
-        </Box>
-      </Flex>
+          {selectFiles.length > 0
+            ? `${t('common:core.dataset.import.Total files', { total: selectFiles.length })} | `
+            : ''}
+          {t('common:common.Next Step')}
+        </Button>
+      </Box>
     </MyBox>
   );
 };

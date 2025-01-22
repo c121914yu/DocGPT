@@ -89,7 +89,7 @@ export function useVirtualScrollPagination<
         // init or reload
         setData(res.list);
       } else {
-        setData((prev) => [...prev, ...res.list]);
+        setData((prevData) => [...prevData, ...res.list]);
       }
     } catch (error: any) {
       toast({
@@ -205,27 +205,30 @@ export function useScrollPagination<
 
   const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
+  const [metaData, setMetaData] = useState<TData['metaData']>({});
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
-  const isEmpty = total === 0 && !isLoading;
 
-  const noMore = data.length >= total;
+  const isEmpty = total === 0 && !isLoading;
+  const noMore = data.length >= total || !!metaData?.noMore;
 
   const loadData = useLockFn(
     async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
       if (noMore && !init) return;
 
-      const offset = init ? 0 : data.length;
-
       setTrue();
 
       try {
+        const offset = init ? 0 : data.length;
+
         const res = await api({
           offset,
           pageSize,
+          metaData,
           ...params
         } as TParams);
 
         setTotal(res.total);
+        setMetaData(res.metaData);
 
         if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
@@ -245,10 +248,10 @@ export function useScrollPagination<
             );
           }
 
-          setData((prevData) => (offset === 0 ? res.list : [...res.list, ...prevData]));
+          setData((prevData) => (init ? res.list : [...res.list, ...prevData]));
           adjustScrollPosition();
         } else {
-          setData((prevData) => (offset === 0 ? res.list : [...prevData, ...res.list]));
+          setData((prevData) => (init ? res.list : [...prevData, ...res.list]));
         }
       } catch (error: any) {
         if (showErrorToast) {

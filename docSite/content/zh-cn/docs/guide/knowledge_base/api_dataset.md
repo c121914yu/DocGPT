@@ -61,6 +61,8 @@ type FileListItem = {
 {{% alert icon=" " context="success" %}}
 - parentId - 父级 id，可选，或者 null。
 - searchKey - 检索词，可选
+- pageSize - 每页显示的数据项的数量
+- offset - 偏移量
 {{% /alert %}}
 
 ```bash
@@ -69,7 +71,9 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "parentId": null,
-    "searchKey": ""
+    "searchKey": "",
+    "pageSize": 15,
+    "offset": 0
 }'
 ```
 
@@ -84,16 +88,19 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
     "code": 200,
     "success": true,
     "message": "",
-    "data": [
-        {
-            "id": "xxxx",
-            "parentId": "xxxx",
-            "type": "file",  // file | folder
-            "name":"test.json",
-            "updateTime":"2024-11-26T03:05:24.759Z",
-            "createTime":"2024-11-26T03:05:24.759Z"
-        }
-   ]
+    "data":{
+        "list": [ 
+            {
+                "id": "xxxx",
+                "parentId": "xxxx",
+                "type": "file",  // file | folder
+                "name":"test.json",
+                "updateTime":"2024-11-26T03:05:24.759Z",
+                "createTime":"2024-11-26T03:05:24.759Z"
+            }
+       ],
+        "total": 1
+    }
 }
 ```
 

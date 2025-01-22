@@ -12,12 +12,13 @@ export type GetApiDatasetFileListProps = {
   searchKey?: string;
   parentId?: ParentIdType;
   datasetId: string;
+  offset: number;
+  pageSize: number;
+  metaData?: Record<string, any>;
 };
 
-export type GetApiDatasetFileListResponse = APIFileItem[];
-
 async function handler(req: NextApiRequest) {
-  let { searchKey = '', parentId = null, datasetId } = req.body;
+  let { searchKey = '', parentId = null, datasetId, pageSize, offset = 0, metaData } = req.body;
 
   const { dataset } = await authDataset({
     req,
@@ -32,13 +33,25 @@ async function handler(req: NextApiRequest) {
   const yuqueServer = dataset.yuqueServer;
 
   if (apiServer) {
-    return useApiDatasetRequest({ apiServer }).listFiles({ searchKey, parentId });
+    const { list, total } = await useApiDatasetRequest({ apiServer }).listFiles({
+      searchKey,
+      parentId,
+      offset,
+      pageSize
+    });
+    return {
+      list,
+      total
+    };
   }
   if (feishuServer || yuqueServer) {
     return getFeishuAndYuqueDatasetFileList({
       feishuServer,
       yuqueServer,
-      parentId
+      parentId,
+      offset,
+      pageSize,
+      metaData
     });
   }
 
